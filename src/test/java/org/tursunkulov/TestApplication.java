@@ -1,4 +1,4 @@
-package org.khabib.tursunkulov;
+package org.tursunkulov;
 
 import org.springframework.boot.SpringApplication;
 
