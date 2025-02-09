@@ -2,9 +2,9 @@ name: Simple CI job
 
 on:  
   push:
-    branches: [ "main" ]  
+    branches: [ "orogin/main" ]  
   pull_request:
-    branches: [ "main" ]
+    branches: [ "origin/main" ]
     
 jobs:  
   build:
