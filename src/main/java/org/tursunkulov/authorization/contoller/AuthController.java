@@ -10,15 +10,21 @@ import java.util.List;
 @RequestMapping("/user")
 public class AuthController {
 
-    private UserRepository userRepository;
-
     @PostMapping("/registartion")
-    public String registration(@RequestBody User user) {
+    public String registration(@RequestParam int id, @RequestParam String username,
+                               @RequestParam String password,
+                               @RequestParam String email,
+                               @RequestParam String phoneNumber) {
+        User user = new User(id, username, password, email, phoneNumber);
         return UserRepository.saveUser(user);
     }
 
     @PostMapping("/authorization")
-    public String authorization(@RequestBody User user) {
+    public String authorization(@RequestParam int id, @RequestParam String username,
+                                @RequestParam String password,
+                                @RequestParam String email,
+                                @RequestParam String phoneNumber) {
+        User user = new User(id, username, password, email, phoneNumber);
         return UserRepository.checkUser(user);
     }
 

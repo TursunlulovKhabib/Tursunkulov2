@@ -10,7 +10,7 @@ import org.tursunkulov.authorization.repositories.UserRepository;
 public class UserService {
 
     public static void registration() {
-        User newUser = new User(0, "", "", "", "");
+        User newUser = new User(0, "Mitya", "121213123", "ffff@g.com", "88003432221");
         UserRepository.saveUser(newUser);
     }
 
