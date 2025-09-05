@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.tursunkulov.authorization.model.User;
+import org.tursunkulov.authorization.entity.User;
 import org.tursunkulov.authorization.service.AuthService;
 
 @Slf4j
@@ -20,26 +20,27 @@ import org.tursunkulov.authorization.service.AuthService;
 @CircuitBreaker(name = "apiCircuitBreaker")
 public class AuthController implements AuthControllerApi {
 
-  private final AuthService authService;
+    private final AuthService authService;
 
-  @Override
-  @PostMapping("/registration")
-  public ResponseEntity<String> registration(
-      @RequestParam int id,
-      @RequestParam String username,
-      @RequestParam String password,
-      @RequestParam String email,
-      @RequestParam String phoneNumber) {
-    User user = new User(id, username, password, email, phoneNumber);
-    log.debug("Регистрация пользователя");
-    return ResponseEntity.ok(authService.registration(user));
-  }
+    @Override
+    @PostMapping("/registration")
+    public ResponseEntity<Void> registration(
+            @RequestParam String username,
+            @RequestParam String password,
+            @RequestParam String email,
+            @RequestParam String phoneNumber) {
+        User user = new User(username, password, email, phoneNumber);
+        log.debug("Регистрация пользователя");
+        authService.registration(user);
+        return ResponseEntity.noContent().build();
+    }
 
-  @Override
-  @PostMapping("/authorization")
-  public ResponseEntity<String> authentication(
-      @RequestParam String username, @RequestParam String password) {
-    log.debug("Аутентификация пользователя");
-    return ResponseEntity.ok(authService.checkUser(username, password));
-  }
+    @Override
+    @PostMapping("/authorization")
+    public ResponseEntity<Void> authentication(
+            @RequestParam String username, @RequestParam String password) {
+        log.debug("Аутентификация пользователя");
+        authService.checkUser(username, password);
+        return ResponseEntity.noContent().build();
+    }
 }

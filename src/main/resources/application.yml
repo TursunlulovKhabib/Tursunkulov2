@@ -9,9 +9,25 @@ spring:
     url: jdbc:postgresql://localhost:5432/postgres
     username: postgres
     password: JavaMTS
-    hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
+  jpa:
+    open-in-view: false
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    hibernate:
+      dialect: org.hibernate.dialect.PostgresSQLDialect
+      ddl-auto: validate
+    flyway:
+      enabled: true
+      locations: classpath:db/migration
+    kafka:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:29093}
+      producer:
+        key-serializer: org.apache.kafka.common.serialization.StringSerializer
+        value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+topic:
+  audit: audit-topic
 
 springdoc:
   swagger-ui:

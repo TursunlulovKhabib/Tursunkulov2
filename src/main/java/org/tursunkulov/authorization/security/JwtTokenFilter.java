@@ -12,15 +12,15 @@ import java.io.IOException;
 @Component
 public class JwtTokenFilter extends OncePerRequestFilter {
 
-  @Override
-  protected void doFilterInternal(
-      HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-      throws ServletException, IOException {
-    String token = request.getHeader("Authorization");
-    if (token != null && token.startsWith("Bearer")) {
-      token = token.substring(7);
-      System.out.println("JWT token: " + token);
+    @Override
+    protected void doFilterInternal(
+            HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
+        String token = request.getHeader("Authorization");
+        if (token != null && token.startsWith("Bearer")) {
+            token = token.substring(7);
+            System.out.println("JWT token: " + token);
+        }
+        filterChain.doFilter(request, response);
     }
-    filterChain.doFilter(request, response);
-  }
 }

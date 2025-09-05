@@ -1,88 +1,96 @@
 package org.tursunkulov.authorization.controller;
 
-import java.util.List;
-import java.util.Optional;
-
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
-import org.tursunkulov.authorization.model.User;
+import org.tursunkulov.authorization.entity.User;
 import org.tursunkulov.authorization.service.UserService;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 @Slf4j
-@AllArgsConstructor
-@Controller
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/user")
 @RateLimiter(name = "apiRateLimiter")
 @CircuitBreaker(name = "apiCircuitBreaker")
-public class UserController implements UserControllerApi {
+public class UserController {
 
-  private final UserService userService;
+    private final UserService userService;
 
-  @Override
-  @GetMapping("/info")
-  public ResponseEntity<Optional<List<User>>> info() {
-    log.info("Получение списка всех пользователей");
-    return ResponseEntity.ok(userService.allUsers());
-  }
+    @GetMapping("/info")
+    public ResponseEntity<Optional<List<User>>> info(
+            @RequestHeader("userId") UUID userId) {
+        log.info("User {} requested all users", userId);
+        return ResponseEntity.ok(userService.allUsers());
+    }
 
-  @Override
-  @GetMapping("/username/{id}")
-  public ResponseEntity<Optional<String>> getUser(@PathVariable int id) {
-    log.info("Получения имени пользователя по id");
-    return ResponseEntity.ok(userService.getUsername(id));
-  }
+    @GetMapping("/{id}")
+    public ResponseEntity<Optional<User>> getUser(
+            @RequestHeader("userId") UUID userId,
+            @PathVariable int id) {
+        log.info("User {} requested user by id {}", userId, id);
+        return ResponseEntity.ok(userService.findUserById(id));
+    }
 
-  @Override
-  @DeleteMapping("/delete/{id}")
-  public ResponseEntity<Void> deleteById(@PathVariable int id) {
-    userService.deleteUserById(id);
-    log.info("Удаления пользователя по id");
-    return ResponseEntity.noContent().build();
-  }
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<Void> deleteById(
+            @RequestHeader("userId") UUID userId,
+            @PathVariable int id) {
+        userService.deleteUserById(id, userId);
+        log.info("User {} deleted user by id {}", userId, id);
+        return ResponseEntity.noContent().build();
+    }
 
-  @Override
-  @DeleteMapping("/delete/{username}")
-  public ResponseEntity<Void> deleteByUsername(@PathVariable String username) {
-    userService.deleteUserByUsername(username);
-    log.info("Удаления пользователя по username");
-    return ResponseEntity.noContent().build();
-  }
+    @DeleteMapping("/delete/username/{username}")
+    public ResponseEntity<Void> deleteByUsername(
+            @RequestHeader("userId") UUID userId,
+            @PathVariable String username) {
+        userService.deleteUserByUsername(username, userId);
+        log.info("User {} deleted user by username {}", userId, username);
+        return ResponseEntity.noContent().build();
+    }
 
-  @Override
-  @PatchMapping("/patchPhoneNumber/{id}")
-  public ResponseEntity<User> patchPhoneNumber(
-      @PathVariable int id, @PathVariable String phoneNumber) {
-    log.info("Смена номера телефона");
-    return ResponseEntity.ok(userService.patchPhoneNumber(id, phoneNumber));
-  }
+    @PatchMapping("/patchPhoneNumber/{id}/{phoneNumber}")
+    public ResponseEntity<Optional<User>> patchPhoneNumber(
+            @RequestHeader("userId") UUID userId,
+            @PathVariable int id,
+            @PathVariable String phoneNumber) {
+        log.info("User {} patching phone number for id {} → {}", userId, id, phoneNumber);
+        return ResponseEntity.ok(userService.patchPhoneNumber(id, phoneNumber, userId));
+    }
 
-  @Override
-  @PatchMapping("/patchEmail/{id}")
-  public ResponseEntity<User> patchEmail(@PathVariable int id, @PathVariable String email) {
-    log.info("Смена электронной почты");
-    return ResponseEntity.ok(userService.patchEmail(id, email));
-  }
+    @PatchMapping("/patchEmail/{id}/{email}")
+    public ResponseEntity<Optional<User>> patchEmail(
+            @RequestHeader("userId") UUID userId,
+            @PathVariable int id,
+            @PathVariable String email) {
+        log.info("User {} patching email for id {} → {}", userId, id, email);
+        return ResponseEntity.ok(userService.patchEmail(id, email, userId));
+    }
 
-  @Override
-  @PutMapping("/updateUserById/{id}")
-  public ResponseEntity<Void> updateUserById(@PathVariable int id, @RequestBody User user) {
-    userService.updateUserById(id, user);
-    log.info("Обновить пользователя по id");
-    return ResponseEntity.noContent().build();
-  }
+    @PutMapping("/updateById/{id}")
+    public ResponseEntity<Void> updateUserById(
+            @RequestHeader("userId") UUID userId,
+            @PathVariable int id,
+            @RequestBody User user) {
+        userService.updateUserById(id, user, userId);
+        log.info("User {} updating user by id {}: {}", userId, id, user);
+        return ResponseEntity.noContent().build();
+    }
 
-  @Override
-  @PutMapping("/updateUserByUsername/{id}")
-  public ResponseEntity<Void> updateUserByUsername(
-      @PathVariable String username, @RequestBody User user) {
-    userService.updateUserByUsername(username, user);
-    log.info("Обновить пользователя по username: {}", username);
-    return ResponseEntity.noContent().build();
-  }
+    @PutMapping("/updateByUsername/{username}")
+    public ResponseEntity<Void> updateUserByUsername(
+            @RequestHeader("userId") UUID userId,
+            @PathVariable String username,
+            @RequestBody User user) {
+        userService.updateUserByUsername(username, user, userId);
+        log.info("User {} updating user by username {}: {}", userId, username, user);
+        return ResponseEntity.noContent().build();
+    }
 }
