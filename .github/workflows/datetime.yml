@@ -1,16 +1,16 @@
 name: Simple CI job
 
-on:  
+on:
   push:
-    branches: [ "main" ]  
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-    
-jobs:  
+
+jobs:
   build:
-    runs-on: ubuntu-latest    
+    runs-on: ubuntu-latest
     steps:
-      - name: Print message to console        
+      - name: Print message to console
         run: |
           current_date_time=$(date)          
           echo "Current date and time: $current_date_time"

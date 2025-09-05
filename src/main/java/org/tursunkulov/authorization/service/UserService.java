@@ -1,56 +1,79 @@
 package org.tursunkulov.authorization.service;
 
+import jakarta.persistence.EntityNotFoundException;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import lombok.AllArgsConstructor;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
-import org.tursunkulov.authorization.model.User;
+import org.springframework.transaction.annotation.Transactional;
+import org.tursunkulov.authorization.entity.User;
+import org.tursunkulov.authorization.model.AuditEventDto;
+import org.tursunkulov.authorization.outbox.OutboxEventService;
 import org.tursunkulov.authorization.repository.UserRepository;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
+@Slf4j
 public class UserService {
 
-  @Cacheable("users")
-  public Optional<List<User>> allUsers() {
-    return Optional.ofNullable(UserRepository.getUsers());
-  }
+    private final UserRepository userRepository;
+    private final OutboxEventService outboxEventService;
 
-  @CachePut(value = "users", key = "#userId.toInt()")
-  public Optional<String> getUsername(int id) {
-    return Optional.ofNullable(UserRepository.findUserById(id));
-  }
+    @Cacheable(value = "users")
+    public List<User> allUsers() {
+        return userRepository.findAll();
+    }
 
-  @CacheEvict(value = "users", key = "#userId.toInt()")
-  public void deleteUserById(int id) {
-    UserRepository.deleteById(id);
-  }
+    @Cacheable(value = "user", key = "#id")
+    public Optional<User> findUserById(Integer id) {
+        return userRepository.findById(id);
+    }
 
-  @CacheEvict(value = "username", key = "#username.toString()")
-  public void deleteUserByUsername(String username) {
-    UserRepository.deleteByUsername(username);
-  }
+    @Transactional
+    public User createUser(User user, UUID actorId) {
+        User saved = userRepository.save(user);
+        publishOutbox("CREATE:" + saved.getId(), actorId);
+        return saved;
+    }
 
-  @CachePut(value = "users", key = "#userId.toInt()")
-  public User patchPhoneNumber(int id, String phoneNumber) {
-    return UserRepository.patchPhoneNumber(id, phoneNumber);
-  }
+    @Transactional
+    @CachePut(value = "user", key = "#id")
+    public User updateUserById(Integer id, User user, UUID actorId) {
+        User existing = userRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("User not found with id " + id));
+        existing.setUsername(user.getUsername());
+        existing.setEmail(user.getEmail());
+        existing.setPassword(user.getPassword());
+        existing.setPhoneNumber(user.getPhoneNumber());
+        User updated = userRepository.save(existing);
+        publishOutbox("UPDATE_BY_ID:" + id, actorId);
+        return updated;
+    }
 
-  @CachePut(value = "users", key = "#userId.toInt()")
-  public User patchEmail(int id, String email) {
-    return UserRepository.patchEmail(id, email);
-  }
+    @Transactional
+    @CacheEvict(value = "user", key = "#id")
+    public void deleteUserById(Integer id, UUID actorId) {
+        if (!userRepository.existsById(id)) {
+            throw new EntityNotFoundException("User not found with id " + id);
+        }
+        userRepository.deleteById(id);
+        publishOutbox("DELETE_BY_ID:" + id, actorId);
+    }
 
-  @CachePut(value = "user", key = "#userId.toInt()")
-  public void updateUserById(int id, User user) {
-    UserRepository.updateUserById(id, user);
-  }
-
-  @CacheEvict(value = "user", allEntries = true)
-  public void updateUserByUsername(String username, User user) {
-    UserRepository.updateUserByUsername(username, user);
-  }
+    private void publishOutbox(String action, UUID actorId) {
+        AuditEventDto event = AuditEventDto.builder()
+            .eventId(UUID.randomUUID())
+            .userId(actorId)
+            .action(action)
+            .timestamp(Instant.now())
+            .build();
+        outboxEventService.publishToOutbox(event);
+        log.debug("Published to outbox: {}", event);
+    }
 }

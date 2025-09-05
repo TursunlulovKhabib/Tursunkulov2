@@ -1,88 +1,74 @@
 package org.tursunkulov.authorization.controller;
 
+import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Optional;
-
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
-import lombok.AllArgsConstructor;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.*;
-import org.tursunkulov.authorization.model.User;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+import org.tursunkulov.authorization.entity.User;
 import org.tursunkulov.authorization.service.UserService;
 
 @Slf4j
-@AllArgsConstructor
-@Controller
 @RestController
-@RequestMapping("/user")
-@RateLimiter(name = "apiRateLimiter")
-@CircuitBreaker(name = "apiCircuitBreaker")
-public class UserController implements UserControllerApi {
+@RequiredArgsConstructor
+@RequestMapping("/users")
+public class UserController {
 
-  private final UserService userService;
+    private final UserService userService;
 
-  @Override
-  @GetMapping("/info")
-  public ResponseEntity<Optional<List<User>>> info() {
-    log.info("Получение списка всех пользователей");
-    return ResponseEntity.ok(userService.allUsers());
-  }
+    @GetMapping
+    public ResponseEntity<List<User>> getAll(@RequestHeader("userId") UUID userId) {
+        log.info("User {} requested all users", userId);
+        return ResponseEntity.ok(userService.allUsers());
+    }
 
-  @Override
-  @GetMapping("/username/{id}")
-  public ResponseEntity<Optional<String>> getUser(@PathVariable int id) {
-    log.info("Получения имени пользователя по id");
-    return ResponseEntity.ok(userService.getUsername(id));
-  }
+    @GetMapping("/{id}")
+    public ResponseEntity<User> getById(
+        @RequestHeader("userId") UUID userId,
+        @PathVariable Integer id) {
+        User user = userService.findUserById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        log.info("User {} requested user by id {}", userId, id);
+        return ResponseEntity.ok(user);
+    }
 
-  @Override
-  @DeleteMapping("/delete/{id}")
-  public ResponseEntity<Void> deleteById(@PathVariable int id) {
-    userService.deleteUserById(id);
-    log.info("Удаления пользователя по id");
-    return ResponseEntity.noContent().build();
-  }
+    @PostMapping
+    public ResponseEntity<User> create(
+        @RequestHeader("userId") UUID userId,
+        @Valid @RequestBody User user) {
+        User created = userService.createUser(user, userId);
+        log.info("User {} created new user {}", userId, created.getId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
 
-  @Override
-  @DeleteMapping("/delete/{username}")
-  public ResponseEntity<Void> deleteByUsername(@PathVariable String username) {
-    userService.deleteUserByUsername(username);
-    log.info("Удаления пользователя по username");
-    return ResponseEntity.noContent().build();
-  }
+    @PutMapping("/{id}")
+    public ResponseEntity<User> update(
+        @RequestHeader("userId") UUID userId,
+        @PathVariable Integer id,
+        @Valid @RequestBody User user) {
+        User updated = userService.updateUserById(id, user, userId);
+        log.info("User {} updated user {}", userId, id);
+        return ResponseEntity.ok(updated);
+    }
 
-  @Override
-  @PatchMapping("/patchPhoneNumber/{id}")
-  public ResponseEntity<User> patchPhoneNumber(
-      @PathVariable int id, @PathVariable String phoneNumber) {
-    log.info("Смена номера телефона");
-    return ResponseEntity.ok(userService.patchPhoneNumber(id, phoneNumber));
-  }
-
-  @Override
-  @PatchMapping("/patchEmail/{id}")
-  public ResponseEntity<User> patchEmail(@PathVariable int id, @PathVariable String email) {
-    log.info("Смена электронной почты");
-    return ResponseEntity.ok(userService.patchEmail(id, email));
-  }
-
-  @Override
-  @PutMapping("/updateUserById/{id}")
-  public ResponseEntity<Void> updateUserById(@PathVariable int id, @RequestBody User user) {
-    userService.updateUserById(id, user);
-    log.info("Обновить пользователя по id");
-    return ResponseEntity.noContent().build();
-  }
-
-  @Override
-  @PutMapping("/updateUserByUsername/{id}")
-  public ResponseEntity<Void> updateUserByUsername(
-      @PathVariable String username, @RequestBody User user) {
-    userService.updateUserByUsername(username, user);
-    log.info("Обновить пользователя по username: {}", username);
-    return ResponseEntity.noContent().build();
-  }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(
+        @RequestHeader("userId") UUID userId,
+        @PathVariable Integer id) {
+        userService.deleteUserById(id, userId);
+        log.info("User {} deleted user {}", userId, id);
+        return ResponseEntity.noContent().build();
+    }
 }

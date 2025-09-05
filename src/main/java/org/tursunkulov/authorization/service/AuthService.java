@@ -1,21 +1,30 @@
 package org.tursunkulov.authorization.service;
 
+import java.util.Optional;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
-import org.tursunkulov.authorization.model.User;
+import org.springframework.transaction.annotation.Transactional;
+import org.tursunkulov.authorization.entity.User;
 import org.tursunkulov.authorization.repository.AuthRepository;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class AuthService {
 
-  @CacheEvict(value = "user", allEntries = true)
-  public String registration(User user) {
-    return AuthRepository.saveUser(user);
+  private final AuthRepository authRepository;
+
+  @Transactional
+  @CacheEvict(value = "users", allEntries = true)
+  public User registration(User user) {
+    return authRepository.save(user);
   }
 
-  @CachePut(value = "username", key = "#username.toString()")
-  public String checkUser(String username, String password) {
-    return AuthRepository.checkUser(username, password);
+  @Cacheable(value = "user", key = "#username")
+  public Optional<User> checkUser(String username, String password) {
+    return authRepository.findByUsernameAndPassword(username, password);
   }
 }

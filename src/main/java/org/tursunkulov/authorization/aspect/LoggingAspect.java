@@ -22,8 +22,12 @@ public class LoggingAspect {
     Instant startTime = Instant.now();
     Object result = joinPoint.proceed();
     Instant endTime = Instant.now();
-    System.out.println("Время исполнения метода " + joinPoint.getSignature().getName() + " равно " +
-        Duration.between(startTime, endTime).toMillis() + " ms");
+    System.out.println(
+        "Время исполнения метода "
+            + joinPoint.getSignature().getName()
+            + " равно "
+            + Duration.between(startTime, endTime).toMillis()
+            + " ms");
     return result;
   }
 }
