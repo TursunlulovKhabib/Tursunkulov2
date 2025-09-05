@@ -12,13 +12,13 @@ import org.springframework.web.reactive.function.client.WebClient;
 @EnableRetry
 public class AppConfig {
 
-  @Bean
-  public RestTemplate restTemplate() {
-    return new RestTemplate();
-  }
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
 
-  @Bean
-  public WebClient webClient() {
-    return WebClient.create();
-  }
+    @Bean
+    public WebClient webClient() {
+        return WebClient.create();
+    }
 }

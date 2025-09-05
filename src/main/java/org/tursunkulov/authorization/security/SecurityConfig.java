@@ -13,13 +13,14 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 public class SecurityConfig {
 
-  @Autowired private JwtTokenFilter jwtTokenFilter;
+    @Autowired
+    private JwtTokenFilter jwtTokenFilter;
 
-  @Bean
-  public SecurityFilterChain configure(HttpSecurity http) throws Exception {
-    http.addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class)
-        .authorizeHttpRequests((requests) -> requests.anyRequest().permitAll())
-        .csrf(AbstractHttpConfigurer::disable);
-    return http.build();
-  }
+    @Bean
+    public SecurityFilterChain configure(HttpSecurity http) throws Exception {
+        http.addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class)
+                .authorizeHttpRequests((requests) -> requests.anyRequest().permitAll())
+                .csrf(AbstractHttpConfigurer::disable);
+        return http.build();
+    }
 }

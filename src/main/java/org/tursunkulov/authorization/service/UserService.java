@@ -1,56 +1,94 @@
 package org.tursunkulov.authorization.service;
 
-import java.util.List;
-import java.util.Optional;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
-import org.tursunkulov.authorization.model.User;
+import org.springframework.transaction.annotation.Transactional;
+import org.tursunkulov.authorization.entity.User;
+import org.tursunkulov.authorization.model.AuditEventDto;
+import org.tursunkulov.authorization.outbox.OutboxEventService;
 import org.tursunkulov.authorization.repository.UserRepository;
 
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
+@Slf4j
 public class UserService {
 
-  @Cacheable("users")
-  public Optional<List<User>> allUsers() {
-    return Optional.ofNullable(UserRepository.getUsers());
-  }
+    private final UserRepository userRepository;
+    private final OutboxEventService outboxEventService;
 
-  @CachePut(value = "users", key = "#userId.toInt()")
-  public Optional<String> getUsername(int id) {
-    return Optional.ofNullable(UserRepository.findUserById(id));
-  }
+    @Transactional
+    @Cacheable("users")
+    public Optional<List<User>> allUsers() {
+        return Optional.ofNullable(userRepository.allUsers());
+    }
 
-  @CacheEvict(value = "users", key = "#userId.toInt()")
-  public void deleteUserById(int id) {
-    UserRepository.deleteById(id);
-  }
+    @Transactional
+    @CachePut(value = "users", key = "#id")
+    public Optional<User> findUserById(int id) {
+        return userRepository.findUserById(id);
+    }
 
-  @CacheEvict(value = "username", key = "#username.toString()")
-  public void deleteUserByUsername(String username) {
-    UserRepository.deleteByUsername(username);
-  }
+    @Transactional
+    @CacheEvict(value = "users", key = "#id")
+    public void deleteUserById(int id, UUID actorId) {
+        userRepository.deleteById(id);
+        sendOutbox("DELETE_BY_ID:" + id, actorId);
+    }
 
-  @CachePut(value = "users", key = "#userId.toInt()")
-  public User patchPhoneNumber(int id, String phoneNumber) {
-    return UserRepository.patchPhoneNumber(id, phoneNumber);
-  }
+    @Transactional
+    @CacheEvict(value = "username", key = "#username")
+    public void deleteUserByUsername(String username, UUID actorId) {
+        userRepository.deleteByUsername(username);
+        sendOutbox("DELETE_BY_USERNAME:" + username, actorId);
+    }
 
-  @CachePut(value = "users", key = "#userId.toInt()")
-  public User patchEmail(int id, String email) {
-    return UserRepository.patchEmail(id, email);
-  }
+    @Transactional
+    @CachePut(value = "users", key = "#id")
+    public Optional<User> patchPhoneNumber(int id, String phoneNumber, UUID actorId) {
+        Optional<User> updated = userRepository.patchPhoneNumber(id, phoneNumber);
+        updated.ifPresent(u -> sendOutbox("PATCH_PHONE_NUMBER:" + id, actorId));
+        return updated;
+    }
 
-  @CachePut(value = "user", key = "#userId.toInt()")
-  public void updateUserById(int id, User user) {
-    UserRepository.updateUserById(id, user);
-  }
+    @Transactional
+    @CachePut(value = "users", key = "#id")
+    public Optional<User> patchEmail(int id, String email, UUID actorId) {
+        Optional<User> updated = userRepository.patchEmail(id, email);
+        updated.ifPresent(u -> sendOutbox("PATCH_EMAIL:" + id, actorId));
+        return updated;
+    }
 
-  @CacheEvict(value = "user", allEntries = true)
-  public void updateUserByUsername(String username, User user) {
-    UserRepository.updateUserByUsername(username, user);
-  }
+    @Transactional
+    @CachePut(value = "user", key = "#id")
+    public void updateUserById(int id, User user, UUID actorId) {
+        userRepository.updateUserById(id, user);
+        sendOutbox("UPDATE_BY_ID:" + id, actorId);
+    }
+
+    @Transactional
+    @CacheEvict(value = "user", allEntries = true)
+    public void updateUserByUsername(String username, User user, UUID actorId) {
+        userRepository.updateUserByUsername(username, user);
+        sendOutbox("UPDATE_BY_USERNAME:" + username, actorId);
+    }
+
+    private void sendOutbox(String action, UUID actorId) {
+        AuditEventDto event = AuditEventDto.builder()
+                .eventId(UUID.randomUUID())
+                .userId(actorId)
+                .action(action)
+                .timestamp(Instant.now())
+                .build();
+        outboxEventService.publishToOutbox(event);
+        log.debug("Published to outbox: {}", event);
+    }
 }

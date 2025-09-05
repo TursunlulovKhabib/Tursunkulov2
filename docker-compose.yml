@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  # PostgreSQL для основного сервиса
+  postgres:
+    image: postgres:14
+    container_name: auth_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: JavaMTS
+    ports:
+      - '5438:5432'
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  # Zookeeper для Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: auth_zookeeper
+    restart: always
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - '2181:2181'
+
+  # Kafka-брокер
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: auth_kafka
+    restart: always
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    ports:
+      - '9092:9092'
+
+  # Основной Spring Boot сервис
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auth_app
+    restart: on-failure
+    depends_on:
+      - postgres
+      - kafka
+    ports:
+      - '8080:8080'
+    environment:
+      # JDBC
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: JavaMTS
+
+      # Kafka
+      KAFKA_BOOTSTRAP: kafka:9092
+
+      # Spring Security
+      SPRING_SECURITY_USER_NAME: admin
+      SPRING_SECURITY_USER_PASSWORD: admin
+
+      # Flyway (по умолчанию включен в application.yml)
+      SPRING_FLYWAY_ENABLED: 'true'
+
+      # Дополнительные настройки (если нужно)
+      SPRING_JPA_SHOW_SQL: 'true'
+      SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: 'true'
+      SPRING_JPA_HIBERNATE_DIALECT: org.hibernate.dialect.PostgresSQLDialect
+
+volumes:
+  pg_data:
